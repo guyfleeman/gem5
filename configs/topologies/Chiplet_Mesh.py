@@ -111,7 +111,7 @@ class Chiplet_Mesh(SimpleTopology):
         # Create the mesh links.
         int_links = []
 
-        # East output to West input links (weight = 1)
+        # East output to West input links (weight = 3)
         east_out = []
         for i in range(0, 63, 2): #All even cores send from east
             east_out.append(i)
@@ -125,10 +125,10 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="East",
                                      dst_inport="West",
                                      latency = link_latency,
-                                     weight=1))
+                                     weight=3))
             link_count += 1
 
-        # West output to East input links (weight = 1)
+        # West output to East input links (weight = 3)
         east_in = []
         for i in range(0, 63, 2): #All even cores receive from east
             east_in.append(i)
@@ -142,10 +142,10 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="West",
                                      dst_inport="East",
                                      latency = link_latency,
-                                     weight=1))
+                                     weight=3))
             link_count += 1
 
-        # North output to South input links (weight = 2)
+        # North output to South input links (weight = 4)
         north_out = []
         south_in = []
         for i in range(0, 63, 4):
@@ -160,10 +160,10 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="North",
                                      dst_inport="South",
                                      latency = link_latency,
-                                     weight=2))
+                                     weight=4))
             link_count += 1
 
-        # South output to North input links (weight = 2)
+        # South output to North input links (weight = 4)
         south_out = []
         north_in = []
         for i in range(0, 63, 4):
@@ -178,11 +178,11 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="South",
                                      dst_inport="North",
                                      latency = link_latency,
-                                     weight=2))
+                                     weight=4))
             link_count += 1
 
         # CMESH LINKS
-        # East output to West input links (weight = 3)
+        # East output to West input links (weight = 1)
         east_out_cmesh = []
         west_in_cmesh = []
         for i in range(64, 79, 4):
@@ -199,10 +199,10 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="East",
                                      dst_inport="West",
                                      latency = link_latency,
-                                     weight=3))
+                                     weight=1))
             link_count += 1
 
-        # West output to East input links (weight = 3)
+        # West output to East input links (weight = 1)
         west_out_cmesh = []
         east_in_cmesh = []
         for i in range(64, 79, 4):
@@ -219,10 +219,10 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="West",
                                      dst_inport="East",
                                      latency = link_latency,
-                                     weight=3))
+                                     weight=1))
             link_count += 1
 
-        # North output to South input links (weight = 3)
+        # North output to South input links (weight = 2)
         north_out_cmesh = []
         south_in_cmesh = []
         for i in range(64, 76):
@@ -236,10 +236,10 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="North",
                                      dst_inport="South",
                                      latency = link_latency,
-                                     weight=3))
+                                     weight=2))
             link_count += 1
 
-        # South output to North input links (weight = 3)
+        # South output to North input links (weight = 2)
         north_in_cmesh = []
         south_out_cmesh = []
         for i in range(64, 76):
@@ -253,7 +253,7 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="South",
                                      dst_inport="North",
                                      latency = link_latency,
-                                     weight=3))
+                                     weight=2))
             link_count += 1
 
         network.int_links = int_links
