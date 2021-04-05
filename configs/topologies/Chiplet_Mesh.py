@@ -256,6 +256,47 @@ class Chiplet_Mesh(SimpleTopology):
                                      weight=2))
             link_count += 1
 
+        # CONNECT CHIPLETS TO CMESH
+        chiplet_cores_out = []
+        cmesh_routers_in = []
+        for i in range(64):
+            chiplet_cores_out.append(i)
+        for i in range(64, 80):
+            cmesh_routers_in.append(i)
+            cmesh_routers_in.append(i)
+            cmesh_routers_in.append(i)
+            cmesh_routers_in.append(i)
+        for i in range(len(chiplet_cores_out)):
+            #TODO: Which input/output ports??
+            int_links.append(IntLink(link_id=link_count,
+                                     src_node=routers[chiplet_cores_out[i]],
+                                     dst_node=routers[cmesh_routers_in[i]],
+                                     src_outport="South",
+                                     dst_inport="North",
+                                     latency = link_latency,
+                                     weight=1))
+            link_count += 1
+
+        chiplet_cores_in = []
+        cmesh_routers_out = []
+        for i in range(64):
+            chiplet_cores_in.append(i)
+        for i in range(64, 80):
+            cmesh_routers_out.append(i)
+            cmesh_routers_out.append(i)
+            cmesh_routers_out.append(i)
+            cmesh_routers_out.append(i)
+        for i in range(len(chiplet_cores_in)):
+            #TODO: Which input/output ports??
+            int_links.append(IntLink(link_id=link_count,
+                                     src_node=routers[cmesh_routers_out[i]],
+                                     dst_node=routers[chiplet_cores_in[i]],
+                                     src_outport="South",
+                                     dst_inport="North",
+                                     latency = link_latency,
+                                     weight=1))
+            link_count += 1
+
         network.int_links = int_links
 
     # Register nodes with filesystem
