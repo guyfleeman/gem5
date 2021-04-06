@@ -125,7 +125,7 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="East",
                                      dst_inport="West",
                                      latency = link_latency,
-                                     weight=3))
+                                     weight=4))
             link_count += 1
 
         # West output to East input links (weight = 3)
@@ -142,7 +142,7 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="West",
                                      dst_inport="East",
                                      latency = link_latency,
-                                     weight=3))
+                                     weight=4))
             link_count += 1
 
         # North output to South input links (weight = 4)
@@ -160,7 +160,7 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="North",
                                      dst_inport="South",
                                      latency = link_latency,
-                                     weight=4))
+                                     weight=5))
             link_count += 1
 
         # South output to North input links (weight = 4)
@@ -178,7 +178,7 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="South",
                                      dst_inport="North",
                                      latency = link_latency,
-                                     weight=4))
+                                     weight=5))
             link_count += 1
 
         # CMESH LINKS
@@ -199,7 +199,7 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="East",
                                      dst_inport="West",
                                      latency = link_latency,
-                                     weight=1))
+                                     weight=2))
             link_count += 1
 
         # West output to East input links (weight = 1)
@@ -219,7 +219,7 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="West",
                                      dst_inport="East",
                                      latency = link_latency,
-                                     weight=1))
+                                     weight=2))
             link_count += 1
 
         # North output to South input links (weight = 2)
@@ -236,7 +236,7 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="North",
                                      dst_inport="South",
                                      latency = link_latency,
-                                     weight=2))
+                                     weight=3))
             link_count += 1
 
         # South output to North input links (weight = 2)
@@ -253,12 +253,14 @@ class Chiplet_Mesh(SimpleTopology):
                                      src_outport="South",
                                      dst_inport="North",
                                      latency = link_latency,
-                                     weight=2))
+                                     weight=3))
             link_count += 1
 
         # CONNECT CHIPLETS TO CMESH
         chiplet_cores_out = []
         cmesh_routers_in = []
+        chiplet_dir_out = []
+        cmesh_dir_in = []
         for i in range(64):
             chiplet_cores_out.append(i)
         for i in range(64, 80):
@@ -266,19 +268,29 @@ class Chiplet_Mesh(SimpleTopology):
             cmesh_routers_in.append(i)
             cmesh_routers_in.append(i)
             cmesh_routers_in.append(i)
+        for i in range(0, 64, 4)
+            chiplet_dir_out.append("South") # core0 output from South
+            chiplet_dir_out.append("South") # core1 output from South
+            chiplet_dir_out.append("North") # core2 output from North
+            chiplet_dir_out.append("North") # core3 output from North
+            cmesh_dir_in.append("South") # receive from core0 at South port
+            cmesh_dir_in.append("East") # receive from core1 at East port
+            cmesh_dir_in.append("West") # receive from core2 at West port
+            cmesh_dir_in.append("North") # receive from core3 at North port
         for i in range(len(chiplet_cores_out)):
-            #TODO: Which input/output ports??
             int_links.append(IntLink(link_id=link_count,
                                      src_node=routers[chiplet_cores_out[i]],
                                      dst_node=routers[cmesh_routers_in[i]],
-                                     src_outport="South",
-                                     dst_inport="North",
+                                     src_outport=chiplet_dir_out[i],
+                                     dst_inport=cmesh_dir_in[i],
                                      latency = link_latency,
                                      weight=1))
             link_count += 1
 
         chiplet_cores_in = []
         cmesh_routers_out = []
+        cmesh_dir_out = []
+        chiplet_dir_in = []
         for i in range(64):
             chiplet_cores_in.append(i)
         for i in range(64, 80):
@@ -286,15 +298,23 @@ class Chiplet_Mesh(SimpleTopology):
             cmesh_routers_out.append(i)
             cmesh_routers_out.append(i)
             cmesh_routers_out.append(i)
+        for i in range(0, 64, 4)
+            cmesh_dir_out.append("South") # send to core0 from South port
+            cmesh_dir_out.append("East") # send to core1 from East port
+            cmesh_dir_out.append("West") # send to core2 from West port
+            cmesh_dir_out.append("North") # send to core3 from North port
+            chiplet_dir_in.append("West") # core0 receive from cmesh at West
+            chiplet_dir_in.append("East") # core1 receive from cmesh at East
+            chiplet_dir_in.append("West") # core2 receive from cmesh at West
+            chiplet_dir_in.append("East") # core3 receive from cmesh at East
         for i in range(len(chiplet_cores_in)):
-            #TODO: Which input/output ports??
             int_links.append(IntLink(link_id=link_count,
                                      src_node=routers[cmesh_routers_out[i]],
                                      dst_node=routers[chiplet_cores_in[i]],
-                                     src_outport="South",
-                                     dst_inport="North",
+                                     src_outport=cmesh_dir_out[i],
+                                     dst_inport=chiplet_dir_in[i],
                                      latency = link_latency,
-                                     weight=1))
+                                     weight=6))
             link_count += 1
 
         network.int_links = int_links
