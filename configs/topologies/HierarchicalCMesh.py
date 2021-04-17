@@ -60,7 +60,7 @@ class HierarchicalCMesh(SimpleTopology):
 
         ## There must be an evenly divisible number of cntrls to routers
         ## Also, obviously the number or rows must be <= the number of routers
-        cntrls_per_router, remainder = divmod(len(nodes), num_routers)
+        cntrls_per_router, remainder = divmod(len(nodes), 64)
         print(cntrls_per_router)
         #assert(num_rows > 0 and num_rows <= num_routers)
         #num_columns = int(num_routers / num_rows)
@@ -78,7 +78,7 @@ class HierarchicalCMesh(SimpleTopology):
         # distributed across the network.
         network_nodes = []
         #remainder_nodes = []
-        for node_index in range(64):
+        for node_index in range(cntrls_per_router):
             #if node_index < (len(nodes) - remainder):
             network_nodes.append(nodes[node_index])
             #else:
@@ -87,7 +87,7 @@ class HierarchicalCMesh(SimpleTopology):
         # Connect each node to the appropriate router
         ext_links = []
         for (i, n) in enumerate(network_nodes):
-            cntrl_level, router_id = divmod(i, num_routers)
+            cntrl_level, router_id = divmod(i, 64)
             assert(cntrl_level < cntrls_per_router)
             ext_links.append(ExtLink(link_id=link_count, ext_node=n,
                                     int_node=routers[router_id],
