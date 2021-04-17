@@ -269,14 +269,14 @@ class Chiplet_Mesh(SimpleTopology):
             cmesh_routers_in.append(i)
             cmesh_routers_in.append(i)
         for i in range(0, 64, 4)
-            chiplet_dir_out.append("South") # core0 output from South
-            chiplet_dir_out.append("South") # core1 output from South
-            chiplet_dir_out.append("North") # core2 output from North
-            chiplet_dir_out.append("North") # core3 output from North
-            cmesh_dir_in.append("South") # receive from core0 at South port
-            cmesh_dir_in.append("East") # receive from core1 at East port
-            cmesh_dir_in.append("West") # receive from core2 at West port
-            cmesh_dir_in.append("North") # receive from core3 at North port
+            chiplet_dir_out.append("Cmesh") # core0 output from South
+            chiplet_dir_out.append("Cmesh") # core1 output from South
+            chiplet_dir_out.append("Cmesh") # core2 output from North
+            chiplet_dir_out.append("Cmesh") # core3 output from North
+            cmesh_dir_in.append("Mesh_SW") # receive from core0 at South port
+            cmesh_dir_in.append("Mesh_SE") # receive from core1 at East port
+            cmesh_dir_in.append("Mesh_NW") # receive from core2 at West port
+            cmesh_dir_in.append("Mesh_NE") # receive from core3 at North port
         for i in range(len(chiplet_cores_out)):
             int_links.append(IntLink(link_id=link_count,
                                      src_node=routers[chiplet_cores_out[i]],
@@ -299,14 +299,14 @@ class Chiplet_Mesh(SimpleTopology):
             cmesh_routers_out.append(i)
             cmesh_routers_out.append(i)
         for i in range(0, 64, 4)
-            cmesh_dir_out.append("South") # send to core0 from South port
-            cmesh_dir_out.append("East") # send to core1 from East port
-            cmesh_dir_out.append("West") # send to core2 from West port
-            cmesh_dir_out.append("North") # send to core3 from North port
-            chiplet_dir_in.append("West") # core0 receive from cmesh at West
-            chiplet_dir_in.append("East") # core1 receive from cmesh at East
-            chiplet_dir_in.append("West") # core2 receive from cmesh at West
-            chiplet_dir_in.append("East") # core3 receive from cmesh at East
+            cmesh_dir_out.append("Mesh_SW") # send to core0 from South port
+            cmesh_dir_out.append("Mesh_SE") # send to core1 from East port
+            cmesh_dir_out.append("Mesh_NW") # send to core2 from West port
+            cmesh_dir_out.append("Mesh_NE") # send to core3 from North port
+            chiplet_dir_in.append("CMesh") # core0 receive from cmesh at West
+            chiplet_dir_in.append("CMesh") # core1 receive from cmesh at East
+            chiplet_dir_in.append("CMesh") # core2 receive from cmesh at West
+            chiplet_dir_in.append("CMesh") # core3 receive from cmesh at East
         for i in range(len(chiplet_cores_in)):
             int_links.append(IntLink(link_id=link_count,
                                      src_node=routers[cmesh_routers_out[i]],
