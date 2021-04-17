@@ -257,5 +257,120 @@ RoutingUnit::outportComputeCustom(RouteInfo route,
                                  int inport,
                                  PortDirection inport_dirn)
 {
-    panic("%s placeholder executed", __FUNCTION__);
+    PortDirection outport_dirn = "Unknown";
+
+    M5_VAR_USED int num_rows = m_router->get_net_ptr()->getNumRows();
+    int num_cols = m_router->get_net_ptr()->getNumCols();
+    assert(num_rows > 0 && num_cols > 0);
+
+    int my_id = m_router->get_id();
+    int my_x = my_id % num_cols;
+    int my_y = my_id / num_cols;
+
+    int dest_id = route.dest_router;
+    int dest_x = dest_id % num_cols;
+    int dest_y = dest_id / num_cols;
+
+    int x_hops = abs(dest_x - my_x);
+    int y_hops = abs(dest_y - my_y);
+
+    bool x_dirn = (dest_x >= my_x);
+    bool y_dirn = (dest_y >= my_y);
+
+    int base_cmesh_rtr_id = num_rows * num_cols;
+    const int chiplet_cols = 2;
+    const int chiplet_rows = 2;
+
+    int src_chiplet_x = my_x / chiplet_rows;
+    int src_chiplet_y = my_y / chiplet_cols;
+    int dest_chiplet_x = dest_x / chiplet_rows;
+    int dest_chiplet_y = dest_y / chiplet_cols;
+
+
+    // this is okay for mid transit
+    //assert(my_id < base_cmesh_rtr_id);
+
+    // our dest should never be a cmesh router
+    assert(dest_id < base_cmesh_rtr_id);
+
+    if (src_chiplet_x == dest_chiplet_x && src_chiplet_y == dest_chiplet_y
+                    && my_id < base_cmesh_rtr_id) {
+        // were on the same chiplet and on the chiplet mesh
+        // we can invoke the local XY router
+        return outportComputeXY(route, inport, inport_dirn);
+        // NOTE inport not used, inport_dirn used for assert checks
+    }
+    else if (my_id < base_cmesh_rtr_id) {
+        // we must be on a chiplet mesh, but src and dest are different
+        // chiplets, we need to promote the pakcet to the cmesh
+        // TODO compute quadrant??? no i don't think so
+        outport_dirn = "Cmesh";
+    } else if (src_chiplet_x == dest_chiplet_x
+                    && src_chiplet_y == dest_chiplet_y
+                    && my_id >= base_cmesh_rtr_id) {
+        // were on the cmesh but want to go to the mesh at the current
+        // chiplet compute dest quadrant
+        if (dest_x % 2 == 0 && dest_y % 2 == 0)
+                outport_dirn = "Mesh_SW";
+                // lower left corner is even row and col
+        else if (dest_x % 2 == 1 && dest_y % 2 == 0)
+                outport_dirn = "Mesh_NW";
+                // upper left corner is odd row and even col
+        else if (dest_x % 2 == 0 && dest_y % 2 == 1)
+                outport_dirn = "Mesh_SE";
+                // lower right corner is even row and odd col
+        else if (dest_x % 2 == 1 && dest_y % 2 == 1)
+                outport_dirn = "Mesh_NE";
+                // upper right corner is even row and even col
+    } else {
+
+        int cmesh_x_hops = abs(dest_chiplet_x - src_chiplet_x);
+        int cmesh_y_hops = abs(dest_chiplet_y - src_chiplet_y);
+
+        bool cmesh_x_dirn = (dest_chiplet_x >= src_chiplet_x);
+        bool cmesh_y_dirn = (dest_chiplet_y >= src_chiplet_y);
+
+        // already checked that in outportCompute() function
+        //assert(!(x_hops == 0 && y_hops == 0));
+
+        if (cmesh_x_hops > 0) {
+            if (cmesh_x_dirn) {
+                //assert(inport_dirn == "Local" || inport_dirn == "West");
+                outport_dirn = "East";
+            } else {
+                //assert(inport_dirn == "Local" || inport_dirn == "East");
+                outport_dirn = "West";
+            }
+        } else if (cmesh_y_hops > 0) {
+            if (cmesh_y_dirn) {
+                // "Local" or "South" or "West" or "East"
+                //assert(inport_dirn != "North");
+                outport_dirn = "North";
+            } else {
+                // "Local" or "North" or "West" or "East"
+                //assert(inport_dirn != "South");
+                outport_dirn = "South";
+            }
+        } else {
+            // x_hops == 0 and y_hops == 0
+            // this is not possible
+            // already checked that in outportCompute() function
+            panic("x_hops == y_hops == 0");
+        }
+    }
+
+        // if on chiplet
+        // 	call outputComputeXY
+        // else if on chiplet mesh
+        // 	set outport cmesh
+        // 	if identical inbound port names not allowed
+        // 		claulate current chiplet quadrant
+        // 		set outport cmesh inbound quadrant
+        // else if on chmesh and dest not current cmesh chiplet rtr
+        // 	invoke cmesh xy
+        // else (we must be on teh cmesh at the correct chiplet)
+        // 	calculate chiplet quadrant
+        // 	set appropriate inbound link
+
+    return m_outports_dirn2idx[outport_dirn];
 }
