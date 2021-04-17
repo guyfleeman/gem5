@@ -37,8 +37,8 @@ from topologies.BaseTopology import SimpleTopology
 # XY routing is enforced (using link weights)
 # to guarantee deadlock freedom.
 
-class Chiplet_Mesh(SimpleTopology):
-    description='Chiplet_Mesh'
+class HierarchicalCMesh(SimpleTopology):
+    description='HierarchicalCMesh'
 
     def __init__(self, controllers):
         self.nodes = controllers
@@ -82,7 +82,7 @@ class Chiplet_Mesh(SimpleTopology):
             #if node_index < (len(nodes) - remainder):
             network_nodes.append(nodes[node_index])
             #else:
-            #remainder_nodes.append(nodes[node_index])
+                #remainder_nodes.append(nodes[node_index])
 
         # Connect each node to the appropriate router
         ext_links = []
@@ -94,16 +94,19 @@ class Chiplet_Mesh(SimpleTopology):
                                     latency = link_latency))
             link_count += 1
 
+        print(len(network_nodes))
+        print(len(nodes))
+
         ## Connect the remainding nodes to router 0.  These should only be
         ## DMA nodes.
         #for (i, node) in enumerate(remainder_nodes):
-        #assert(node.type == 'DMA_Controller')
-        #assert(i < remainder)
-        #ext_links.append(ExtLink(link_id=link_count, ext_node=node,
-        #int_node=routers[0],
-        #latency = link_latency))
+        #    assert(node.type == 'DMA_Controller')
+        #    assert(i < remainder)
+        #    ext_links.append(ExtLink(link_id=link_count, ext_node=node,
+        #        int_node=routers[0],
+        #        latency = link_latency))
 
-        #link_count += 1
+        #    link_count += 1
 
 
         network.ext_links = ext_links
@@ -268,7 +271,7 @@ class Chiplet_Mesh(SimpleTopology):
             cmesh_routers_in.append(i)
             cmesh_routers_in.append(i)
             cmesh_routers_in.append(i)
-        for i in range(0, 64, 4)
+        for i in range(0, 64, 4):
             chiplet_dir_out.append("Cmesh") # core0 output from South
             chiplet_dir_out.append("Cmesh") # core1 output from South
             chiplet_dir_out.append("Cmesh") # core2 output from North
@@ -298,7 +301,7 @@ class Chiplet_Mesh(SimpleTopology):
             cmesh_routers_out.append(i)
             cmesh_routers_out.append(i)
             cmesh_routers_out.append(i)
-        for i in range(0, 64, 4)
+        for i in range(0, 64, 4):
             cmesh_dir_out.append("Mesh_SW") # send to core0 from South port
             cmesh_dir_out.append("Mesh_SE") # send to core1 from East port
             cmesh_dir_out.append("Mesh_NW") # send to core2 from West port
