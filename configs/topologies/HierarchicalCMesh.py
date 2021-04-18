@@ -49,8 +49,51 @@ class HierarchicalCMesh(SimpleTopology):
     def makeTopology(self, options, network, IntLink, ExtLink, Router):
         nodes = self.nodes #TODO: How to specify only 64 nodes?
 
-        num_routers = 80 #options.num_cpus
-        #num_rows = options.mesh_rows
+        chiplet_dim = 2
+        cpus_per_chiplet = chiplet_dim ** 2
+
+        num_cpus = options.num_cpus
+        num_cpu_routers = num_cpus # may need to change later based on cpus/rtr
+        num_mesh_routers = num_cpu_routers
+        assert(num_cpu_routers == 64) # this is a hardcoded check for now
+        num_non_cpu_routers = int(num_cpu_routers / cpus_per_chiplet)
+        num_cmesh_routers = num_non_cpu_routers
+        assert(num_non_cpu_routers == 16) # this is a hardcoded check for now
+        num_routers = num_cpu_routers + num_non_cpu_routers
+        assert(num_routers == 80) # this is a hardcoded check for now
+        num_rows = options.mesh_rows
+        cpu_rtrs_per_col = num_rows
+        mesh_rtrs_per_col = num_rows
+        assert(num_rows == 8) # this is a hardcoded check for now
+        num_cols = int(num_cpus / num_rows)
+        cpu_rtrs_per_row = num_cols
+        mesh_rtrs_per_row = num_cols
+        assert(mesh_rtrs_per_row == 8)
+
+        cmesh_rows = int(num_rows / chiplet_dim)
+        assert(cmesh_rows == 4) # this is a hardcoded check for now
+        cmesh_cols = int(num_cols / chiplet_dim)
+        assert(cmesh_cols == 4) # this is a hardcoded check for now
+        cmesh_rtrs_per_row = cmesh_cols
+        cmesh_rtrs_per_col = cmesh_rows
+
+        # must be square
+        assert(num_rows ** 2 == options.num_cpus)
+
+        # chiplet mesh constants
+        mesh_rtr_base_id = 0
+        mesh_rtr_max_id = num_cpu_routers - 1
+        assert(mesh_rtr_max_id == 63) # this is a hardcoded check for now
+        mesh_rtr_max_id_excl = mesh_rtr_max_id + 1
+        assert(mesh_rtr_max_id_excl == 64) # this is a hardcoded check for now
+
+        # cmesh constants
+        cmesh_rtr_base_id = mesh_rtr_max_id + 1
+        assert(cmesh_rtr_base_id == 64) # this is a hardcoded check for now
+        cmesh_rtr_max_id = cmesh_rtr_base_id + num_cmesh_routers - 1
+        assert(cmesh_rtr_max_id == 79) # this is a hardcoded check for now
+        cmesh_rtr_max_id_excl = cmesh_rtr_max_id + 1
+        assert(cmesh_rtr_max_id_excl == 80) # this is a hardcoded check for now
 
         # default values for link latency and router latency.
         # Can be over-ridden on a per link/router basis
@@ -60,7 +103,7 @@ class HierarchicalCMesh(SimpleTopology):
 
         ## There must be an evenly divisible number of cntrls to routers
         ## Also, obviously the number or rows must be <= the number of routers
-        cntrls_per_router, remainder = divmod(len(nodes), 64)
+        cntrls_per_router, remainder = divmod(len(nodes), num_cpu_routers)
         print(cntrls_per_router)
         #assert(num_rows > 0 and num_rows <= num_routers)
         #num_columns = int(num_routers / num_rows)
@@ -78,24 +121,22 @@ class HierarchicalCMesh(SimpleTopology):
         # distributed across the network.
         network_nodes = []
         #remainder_nodes = []
-        for node_index in range(cntrls_per_router):
+        for node_index in range(128):
             #if node_index < (len(nodes) - remainder):
             network_nodes.append(nodes[node_index])
             #else:
                 #remainder_nodes.append(nodes[node_index])
 
         # Connect each node to the appropriate router
+        # this is currently one L1 and one directory controller per router
         ext_links = []
         for (i, n) in enumerate(network_nodes):
-            cntrl_level, router_id = divmod(i, 64)
+            cntrl_level, router_id = divmod(i, num_cpu_routers)
             assert(cntrl_level < cntrls_per_router)
             ext_links.append(ExtLink(link_id=link_count, ext_node=n,
                                     int_node=routers[router_id],
                                     latency = link_latency))
             link_count += 1
-
-        print(len(network_nodes))
-        print(len(nodes))
 
         ## Connect the remainding nodes to router 0.  These should only be
         ## DMA nodes.
@@ -111,214 +152,196 @@ class HierarchicalCMesh(SimpleTopology):
 
         network.ext_links = ext_links
 
+
+        debug_con = [] # format ((src, dest), link_id)
+        def debug_con_app_chk(src, dest, lid, con):
+            entry = ((src, dest), con)
+            for dc in con:
+                if dc[0] == entry[0]:
+                    assert(f"{entry} is a dupliucate. OL: {dc}")
+
+            con.append(entry)
+
+        ########################
+        #  ON-CHIPLET XY MESH  #
+        ########################
+
+        on_chiplet_link_latency = link_latency
+        on_chiplet_link_width = 32
+        chiplet_width = 2
+
         # Create the mesh links.
         int_links = []
 
-        # East output to West input links (weight = 3)
-        east_out = []
-        for i in range(0, 63, 2): #All even cores send from east
-            east_out.append(i)
-        west_in = []
-        for i in range(1, 64, 2): #Al odd cores receive from west
-            west_in.append(i)
-        for i in range(len(east_out)):
+        # on-chiplet EW and WE links
+        for i in range(mesh_rtr_base_id, num_mesh_routers, chiplet_width):
+            # add east to west link (left to right)
+            debug_con_app_chk(i, i + 1, link_count, debug_con)
             int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[east_out[i]],
-                                     dst_node=routers[west_in[i]],
+                                     src_node=routers[i],
+                                     dst_node=routers[i + 1],
                                      src_outport="East",
                                      dst_inport="West",
-                                     latency = link_latency,
-                                     weight=4))
+                                     latency=link_latency))
+
             link_count += 1
 
-        # West output to East input links (weight = 3)
-        east_in = []
-        for i in range(0, 63, 2): #All even cores receive from east
-            east_in.append(i)
-        west_out = []
-        for i in range(1, 64, 2): #All odd cores send from west
-            west_out.append(i)
-        for i in range(len(west_out)):
+            # add west to east link (right to left)
+            debug_con_app_chk(i + 1, i, link_count, debug_con)
             int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[west_out[i]],
-                                     dst_node=routers[east_in[i]],
+                                     src_node=routers[i + 1],
+                                     dst_node=routers[i],
                                      src_outport="West",
                                      dst_inport="East",
-                                     latency = link_latency,
-                                     weight=4))
+                                     latency=link_latency))
+
             link_count += 1
 
-        # North output to South input links (weight = 4)
-        north_out = []
-        south_in = []
-        for i in range(0, 63, 4):
-            north_out.append(i) #All bottom cores in chiplet send from north
-            north_out.append(i+1)
-            south_in.append(i+2) #All top cores in chiplet receive from south
-            south_in.append(i+3)
-        for i in range(len(north_out)):
-            int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[north_out[i]],
-                                     dst_node=routers[south_in[i]],
-                                     src_outport="North",
-                                     dst_inport="South",
-                                     latency = link_latency,
-                                     weight=5))
-            link_count += 1
+        for base_id in range(mesh_rtr_base_id, num_mesh_routers, \
+                mesh_rtrs_per_row * chiplet_dim):
+            for i in range(base_id, base_id + mesh_rtrs_per_row, 1):
+                south_id = i
+                north_id = i + mesh_rtrs_per_row
 
-        # South output to North input links (weight = 4)
-        south_out = []
-        north_in = []
-        for i in range(0, 63, 4):
-            north_in.append(i) #All bottom cores in chiplet receive from north
-            north_in.append(i+1)
-            south_out.append(i+2) #All top cores in chiplet send from south
-            south_out.append(i+3)
-        for i in range(len(south_out)):
-            int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[south_out[i]],
-                                     dst_node=routers[north_in[i]],
-                                     src_outport="South",
-                                     dst_inport="North",
-                                     latency = link_latency,
-                                     weight=5))
-            link_count += 1
+                # add south to north link (bottom to top)
+                debug_con_app_chk(south_id, north_id, link_count, debug_con)
+                int_links.append(IntLink(link_id=link_count,
+                                         src_node=routers[south_id],
+                                         dst_node=routers[north_id],
+                                         src_outport="North",
+                                         dst_inport="South",
+                                         latency = link_latency))
+                link_count += 1
+
+                # add north to south link (top to bottom)
+                debug_con_app_chk(north_id, south_id, link_count, debug_con)
+                int_links.append(IntLink(link_id=link_count,
+                                         src_node=routers[north_id],
+                                         dst_node=routers[south_id],
+                                         src_outport="South",
+                                         dst_inport="North",
+                                         latency = link_latency))
+                link_count += 1
+
+
+        #################
+        #  CMESH LINKS  #
+        #################
 
         # CMESH LINKS
-        # East output to West input links (weight = 1)
-        east_out_cmesh = []
-        west_in_cmesh = []
-        for i in range(64, 79, 4):
-            east_out_cmesh.append(i)
-            east_out_cmesh.append(i+1)
-            east_out_cmesh.append(i+2)
-            west_in_cmesh.append(i+1)
-            west_in_cmesh.append(i+2)
-            west_in_cmesh.append(i+3)
-        for i in range(len(east_out_cmesh)):
-            int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[east_out_cmesh[i]],
-                                     dst_node=routers[west_in_cmesh[i]],
-                                     src_outport="East",
-                                     dst_inport="West",
-                                     latency = link_latency,
-                                     weight=2))
-            link_count += 1
+        for cmesh_row_base_id in range(cmesh_rtr_base_id, \
+                cmesh_rtr_max_id_excl, cmesh_rtrs_per_row):
+            for i in range(cmesh_row_base_id, \
+                    cmesh_row_base_id + cmesh_rtrs_per_row - 1):
+                # add east to west link (left to right)
+                debug_con_app_chk(i, i + 1, link_count, debug_con)
+                int_links.append(IntLink(link_id=link_count,
+                                         src_node=routers[i],
+                                         dst_node=routers[i + 1],
+                                         src_outport="East",
+                                         dst_inport="West",
+                                         latency=link_latency))
 
-        # West output to East input links (weight = 1)
-        west_out_cmesh = []
-        east_in_cmesh = []
-        for i in range(64, 79, 4):
-            east_in_cmesh.append(i)
-            east_in_cmesh.append(i+1)
-            east_in_cmesh.append(i+2)
-            west_out_cmesh.append(i+1)
-            west_out_cmesh.append(i+2)
-            west_out_cmesh.append(i+3)
-        for i in range(len(west_out_cmesh)):
-            int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[west_out_cmesh[i]],
-                                     dst_node=routers[east_in_cmesh[i]],
-                                     src_outport="West",
-                                     dst_inport="East",
-                                     latency = link_latency,
-                                     weight=2))
-            link_count += 1
+                link_count += 1
 
-        # North output to South input links (weight = 2)
-        north_out_cmesh = []
-        south_in_cmesh = []
-        for i in range(64, 76):
-            north_out_cmesh.append(i)
-        for i in range(68, 80):
-            south_in_cmesh.append(i)
-        for i in range(len(north_out_cmesh)):
-            int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[north_out_cmesh[i]],
-                                     dst_node=routers[south_in_cmesh[i]],
-                                     src_outport="North",
-                                     dst_inport="South",
-                                     latency = link_latency,
-                                     weight=3))
-            link_count += 1
+                # add west to east link (right to left)
+                debug_con_app_chk(i + 1, i, link_count, debug_con)
+                int_links.append(IntLink(link_id=link_count,
+                                         src_node=routers[i + 1],
+                                         dst_node=routers[i],
+                                         src_outport="West",
+                                         dst_inport="East",
+                                         latency=link_latency))
 
-        # South output to North input links (weight = 2)
-        north_in_cmesh = []
-        south_out_cmesh = []
-        for i in range(64, 76):
-            north_in_cmesh.append(i)
-        for i in range(68, 80):
-            south_out_cmesh.append(i)
-        for i in range(len(south_out_cmesh)):
-            int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[south_out_cmesh[i]],
-                                     dst_node=routers[north_in_cmesh[i]],
-                                     src_outport="South",
-                                     dst_inport="North",
-                                     latency = link_latency,
-                                     weight=3))
-            link_count += 1
+                link_count += 1
 
-        # CONNECT CHIPLETS TO CMESH
-        chiplet_cores_out = []
-        cmesh_routers_in = []
-        chiplet_dir_out = []
-        cmesh_dir_in = []
-        for i in range(64):
-            chiplet_cores_out.append(i)
-        for i in range(64, 80):
-            cmesh_routers_in.append(i)
-            cmesh_routers_in.append(i)
-            cmesh_routers_in.append(i)
-            cmesh_routers_in.append(i)
-        for i in range(0, 64, 4):
-            chiplet_dir_out.append("Cmesh") # core0 output from South
-            chiplet_dir_out.append("Cmesh") # core1 output from South
-            chiplet_dir_out.append("Cmesh") # core2 output from North
-            chiplet_dir_out.append("Cmesh") # core3 output from North
-            cmesh_dir_in.append("Mesh_SW") # receive from core0 at South port
-            cmesh_dir_in.append("Mesh_SE") # receive from core1 at East port
-            cmesh_dir_in.append("Mesh_NW") # receive from core2 at West port
-            cmesh_dir_in.append("Mesh_NE") # receive from core3 at North port
-        for i in range(len(chiplet_cores_out)):
-            int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[chiplet_cores_out[i]],
-                                     dst_node=routers[cmesh_routers_in[i]],
-                                     src_outport=chiplet_dir_out[i],
-                                     dst_inport=cmesh_dir_in[i],
-                                     latency = link_latency,
-                                     weight=1))
-            link_count += 1
+        for cmesh_row_base_id in range(cmesh_rtr_base_id, \
+                cmesh_rtr_max_id_excl - cmesh_rtrs_per_row, \
+                cmesh_rtrs_per_row):
+            for i in range(cmesh_row_base_id, cmesh_row_base_id \
+                    + cmesh_rtrs_per_row):
+                south_id = i
+                north_id = i + cmesh_rtrs_per_row
 
-        chiplet_cores_in = []
-        cmesh_routers_out = []
-        cmesh_dir_out = []
-        chiplet_dir_in = []
-        for i in range(64):
-            chiplet_cores_in.append(i)
-        for i in range(64, 80):
-            cmesh_routers_out.append(i)
-            cmesh_routers_out.append(i)
-            cmesh_routers_out.append(i)
-            cmesh_routers_out.append(i)
-        for i in range(0, 64, 4):
-            cmesh_dir_out.append("Mesh_SW") # send to core0 from South port
-            cmesh_dir_out.append("Mesh_SE") # send to core1 from East port
-            cmesh_dir_out.append("Mesh_NW") # send to core2 from West port
-            cmesh_dir_out.append("Mesh_NE") # send to core3 from North port
-            chiplet_dir_in.append("CMesh") # core0 receive from cmesh at West
-            chiplet_dir_in.append("CMesh") # core1 receive from cmesh at East
-            chiplet_dir_in.append("CMesh") # core2 receive from cmesh at West
-            chiplet_dir_in.append("CMesh") # core3 receive from cmesh at East
-        for i in range(len(chiplet_cores_in)):
-            int_links.append(IntLink(link_id=link_count,
-                                     src_node=routers[cmesh_routers_out[i]],
-                                     dst_node=routers[chiplet_cores_in[i]],
-                                     src_outport=cmesh_dir_out[i],
-                                     dst_inport=chiplet_dir_in[i],
-                                     latency = link_latency,
-                                     weight=6))
-            link_count += 1
+                # add south to north link (bottom to top)
+                debug_con_app_chk(south_id, north_id, link_count, debug_con)
+                int_links.append(IntLink(link_id=link_count,
+                                         src_node=routers[south_id],
+                                         dst_node=routers[north_id],
+                                         src_outport="North",
+                                         dst_inport="South",
+                                         latency = link_latency))
+                link_count += 1
+
+                # add north to south link (top to bottom)
+                debug_con_app_chk(north_id, south_id, link_count, debug_con)
+                int_links.append(IntLink(link_id=link_count,
+                                         src_node=routers[north_id],
+                                         dst_node=routers[south_id],
+                                         src_outport="South",
+                                         dst_inport="North",
+                                         latency = link_latency))
+                link_count += 1
+
+
+        #############################
+        #  CMESH <-> MESH INTERCON  #
+        #############################
+
+        def mesh_xy_to_mesh_id(x, y):
+            return mesh_rtr_base_id + ((y * mesh_rtrs_per_row) + x)
+
+        def mesh_xy_to_cmesh_xy(x, y):
+            cmesh_x = int(x / chiplet_dim)
+            cmesh_y = int(y / chiplet_dim)
+            return (cmesh_x, cmesh_y)
+
+        def cmesh_xy_to_cmesh_id(x, y):
+            return cmesh_rtr_base_id + ((y * cmesh_rtrs_per_row) + x)
+
+        def mesh_xy_to_quadrant(x, y):
+            if x % 2 == 0 and y % 2 == 0:
+                return "SW"
+            elif x % 2 == 1 and y % 2 == 0:
+                return "SE"
+            elif x % 2 == 0 and y % 2 == 1:
+                return "NW"
+            elif x % 2 == 1 and y % 2 == 1:
+                return "NE"
+            else:
+                assert(False) # impossible
+
+        for x in range(0, mesh_rtrs_per_row):
+            for y in range(0, mesh_rtrs_per_col):
+                mesh_id = mesh_xy_to_mesh_id(x, y)
+                mesh_quad = mesh_xy_to_quadrant(x, y)
+
+                cx, cy = mesh_xy_to_cmesh_xy(x, y)
+                cmesh_id = cmesh_xy_to_cmesh_id(cx, cy)
+
+                quad_port_name = "Mesh_" + mesh_quad
+
+                # add mesh to cmesh link (promotion link)
+                debug_con_app_chk(mesh_id, cmesh_id, link_count, debug_con)
+                int_links.append(IntLink(link_id=link_count,
+                                         src_node=routers[mesh_id],
+                                         dst_node=routers[cmesh_id],
+                                         src_outport="Cmesh",
+                                         dst_inport=quad_port_name + "i",
+                                         latency = link_latency))
+                link_count += 1
+
+                # add cmesh to mesh link (demotion link)
+                debug_con_app_chk(cmesh_id, mesh_id, link_count, debug_con)
+                int_links.append(IntLink(link_id=link_count,
+                                         src_node=routers[cmesh_id],
+                                         dst_node=routers[mesh_id],
+                                         src_outport=quad_port_name,
+                                         dst_inport="Cmesh",
+                                         latency = link_latency))
+                link_count += 1
+
+        #assert False, f"num_links: {len(debug_con)} --- {debug_con}"
 
         network.int_links = int_links
 

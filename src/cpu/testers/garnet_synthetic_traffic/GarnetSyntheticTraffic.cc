@@ -180,6 +180,7 @@ GarnetSyntheticTraffic::tick()
 void
 GarnetSyntheticTraffic::generatePkt()
 {
+    inform("injecting a packet");
     int num_destinations = numDestinations;
     int radix = (int) sqrt(num_destinations);
     unsigned destination = id;
@@ -188,6 +189,8 @@ GarnetSyntheticTraffic::generatePkt()
     int source = id;
     int src_x = id%radix;
     int src_y = id/radix;
+
+    //fatal_if(num_destinations >= 64, "INJECTING FROM NET ONLY RTR");
 
     if (singleDest >= 0)
     {
@@ -237,6 +240,11 @@ GarnetSyntheticTraffic::generatePkt()
     else {
         fatal("Unknown Traffic Type: %s!\n", traffic);
     }
+
+    inform("injected: " + std::to_string(source) + ", "
+                    + std::to_string(destination) + ", ("
+                    + std::to_string(radix) + ", "
+                    + std::to_string(num_destinations) + ")");
 
     // The source of the packets is a cache.
     // The destination of the packets is a directory.
