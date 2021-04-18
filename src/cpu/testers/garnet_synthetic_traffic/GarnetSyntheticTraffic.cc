@@ -180,7 +180,7 @@ GarnetSyntheticTraffic::tick()
 void
 GarnetSyntheticTraffic::generatePkt()
 {
-    inform("injecting a packet");
+    //inform("injecting a packet");
     int num_destinations = numDestinations;
     int radix = (int) sqrt(num_destinations);
     unsigned destination = id;
@@ -241,10 +241,12 @@ GarnetSyntheticTraffic::generatePkt()
         fatal("Unknown Traffic Type: %s!\n", traffic);
     }
 
+
     inform("injected: " + std::to_string(source) + ", "
                     + std::to_string(destination) + ", ("
                     + std::to_string(radix) + ", "
                     + std::to_string(num_destinations) + ")");
+
 
     // The source of the packets is a cache.
     // The destination of the packets is a directory.

@@ -205,6 +205,9 @@ RoutingUnit::outportComputeXY(RouteInfo route,
     int num_cols = m_router->get_net_ptr()->getNumCols();
     assert(num_rows > 0 && num_cols > 0);
 
+    num_rows = 8;
+    num_cols = 8;
+
     int my_id = m_router->get_id();
     int my_x = my_id % num_cols;
     int my_y = my_id / num_cols;
@@ -264,6 +267,8 @@ RoutingUnit::outportComputeXY(RouteInfo route,
         // already checked that in outportCompute() function
         panic("x_hops == y_hops == 0");
     }
+
+        inform("localXY output direction: " + outport_dirn);
 
     return m_outports_dirn2idx[outport_dirn];
 }
