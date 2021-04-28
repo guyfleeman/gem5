@@ -53,9 +53,18 @@ def define_options(parser):
                             Has to be >= 1.
                             Can be over-ridden on a per link basis
                             in the topology file.""")
+    parser.add_option("--serdes-latency", action="store", type="int",
+                      default=1,
+                      help="""latency of each link the simple/garnet networks.
+                            Has to be >= 1.
+                            Can be over-ridden on a per link basis
+                            in the topology file.""")
     parser.add_option("--link-width-bits", action="store", type="int",
                       default=128,
                       help="width in bits for all links inside garnet.")
+    parser.add_option("--serial-link-width-bits", action="store", type="int",
+                      default=64,
+                      help="width in bits for all serdes links inside garnet.")
     parser.add_option("--vcs-per-vnet", action="store", type="int", default=4,
                       help="""number of virtual channels per virtual network
                             inside garnet network.""")
@@ -138,10 +147,12 @@ def init_network(options, network, InterfaceClass):
             ext_net_bridges.append(NetworkBridge(link =
                                  extLink.network_links[0],
                                  vtype = 'OBJECT_LINK',
+                                 serdes_latency = options.serdes_latency,
                                  width = extLink.width))
             ext_net_bridges.append(NetworkBridge(link =
                                  extLink.network_links[1],
                                  vtype = 'LINK_OBJECT',
+                                 serdes_latency = options.serdes_latency,
                                  width = extLink.width))
             extLink.ext_net_bridge = ext_net_bridges
 

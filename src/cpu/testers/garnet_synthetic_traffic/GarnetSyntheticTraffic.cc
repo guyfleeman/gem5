@@ -242,10 +242,11 @@ GarnetSyntheticTraffic::generatePkt()
     }
 
 
+    /*
     inform("injected: " + std::to_string(source) + ", "
                     + std::to_string(destination) + ", ("
                     + std::to_string(radix) + ", "
-                    + std::to_string(num_destinations) + ")");
+                    + std::to_string(num_destinations) + ")"); */
 
 
     // The source of the packets is a cache.
