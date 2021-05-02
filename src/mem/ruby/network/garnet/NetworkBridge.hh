@@ -62,6 +62,8 @@ class NetworkBridge: public CreditLink
 
     void scheduleFlit(flit *t_flit, Cycles latency);
     void flitisizeAndSend(flit *t_flit);
+    void pawsFlitisizeAndSend(flit *t_flit);
+    void pawsFlushVc(int vc);
     void setVcsPerVnet(uint32_t consumerVcs);
 
   protected:
@@ -88,11 +90,21 @@ class NetworkBridge: public CreditLink
     Tick lastScheduledAt;
 
     // Used by Credit Deserializer
+
+    // for credits only (they can only be one dflit)
     std::vector<int> lenBuffer;
-    std::vector<int> sizeSent;
-    std::vector<int> flitsSent;
+    // mantains ratio/len meta data for ephemrel credit
     std::vector<std::queue<int>> extraCredit;
 
+    // for actual data packets
+    std::vector<int> sizeSent; // in bytes, accumulates
+    std::vector<int> flitsSent; // smaller ser flits, rederived from index
+
+    // used by paws
+    std::vector<flit*> ser_flit_cache;
+    //std::vector<int> ser_flit_slack_space;
+    std::vector<bool> packing_timer_active;
+    std::vector<int> packing_timer;
 };
 
 #endif // __MEM_RUBY_NETWORK_GARNET_0_NETWORK_BRIDGE_HH__

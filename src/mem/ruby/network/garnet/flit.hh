@@ -69,6 +69,17 @@ class flit
     void set_dequeue_time(Tick time) { m_dequeue_time = time; }
     void set_enqueue_time(Tick time) { m_enqueue_time = time; }
 
+    void set_packed(bool packed) { this->packed = packed; }
+    bool get_packed() { return packed; }
+    void set_packed_ind(int packed_index) {
+            this->packed_index = packed_index;
+    }
+    int get_packed_ind() { return packed_index; }
+    void set_second_flit(flit *second_flit) {
+            this->second_flit = second_flit;
+    }
+    flit* get_second_flit(flit *second_flit) { return second_flit; }
+
     void increment_hops() { m_route.hops_traversed++; }
     virtual void print(std::ostream& out) const;
 
@@ -117,6 +128,11 @@ class flit
     int m_outport;
     Tick src_delay;
     std::pair<flit_stage, Tick> m_stage;
+
+    // paws meta
+    bool packed;
+    int packed_index;
+    flit* second_flit;
 };
 
 inline std::ostream&

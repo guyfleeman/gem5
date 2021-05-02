@@ -268,7 +268,7 @@ RoutingUnit::outportComputeXY(RouteInfo route,
         panic("x_hops == y_hops == 0");
     }
 
-        inform("localXY output direction: " + outport_dirn);
+        //inform("localXY output direction: " + outport_dirn);
 
     return m_outports_dirn2idx[outport_dirn];
 }
